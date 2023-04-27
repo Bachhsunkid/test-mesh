@@ -1,118 +1,187 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
+import { useState } from "react";
+import type { NextPage } from "next";
+import { useWallet } from '@meshsdk/react';
+import { CardanoWallet } from '@meshsdk/react';
+import { ForgeScript, Transaction } from "@meshsdk/core";
 
-const inter = Inter({ subsets: ['latin'] })
+import type { Mint, AssetMetadata } from "@meshsdk/core";
+import type { Asset } from "@meshsdk/core";
 
-export default function Home() {
-  return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">pages/index.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+const Home: NextPage = () => {
+  const { connected, wallet } = useWallet();
+  const [assets, setAssets] = useState<null | any>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+  async function getAssets() {
+    if (wallet) {
+      setLoading(true);
+      const _assets = await wallet.getAssets();
+      setAssets(_assets);
+      setLoading(false);
+    }
+  }
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+  async function sendAda() {
+    const tx = new Transaction({ initiator: wallet })
+      .sendLovelace(
+        "addr_test1qz40t3pvn5x7xxah7zvkn0ay30twems9g8l09tg5dnj70vwdht80uqnhfvvm6sjjlg3kmalrh9g7evzs7pwz8kyqh2dstcr9lu",
+        "1000000"
+      )
+    const unsignedTx = await tx.build();
+    const signedTx = await wallet.signTx(unsignedTx);
+    const txHash = await wallet.submitTx(signedTx);
+  }
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+  async function sendAsset() {
+    const tx = new Transaction({ initiator: wallet })
+    .sendAssets(
+      "addr_test1qz40t3pvn5x7xxah7zvkn0ay30twems9g8l09tg5dnj70vwdht80uqnhfvvm6sjjlg3kmalrh9g7evzs7pwz8kyqh2dstcr9lu",
+      [
+        {
+          unit: "d3332d3250f2b5658d52ea798d59ed1b3e836a6fe6ce3ee8ab6224c762616368",
+          quantity: "10",
+        },
+      ]
+    )
+    const unsignedTx = await tx.build();
+    const signedTx = await wallet.signTx(unsignedTx);
+    const txHash = await wallet.submitTx(signedTx);
+  }
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
+  async function mintNFT() {
+    // prepare forgingScript
+    const usedAddress = await wallet.getUsedAddresses();
+    const address = usedAddress[0];
+    const forgingScript = ForgeScript.withOneSignature(address);
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+    const tx = new Transaction({ initiator: wallet });
+
+    // define asset#1 metadata
+    const assetMetadata1: AssetMetadata = {
+      "name": "T1",
+      "image": "ipfs://QmREp3TLtFCeTFozpDUTnpkLvjDe2Mvdu1r6x8k4m6mdtk",
+      "mediaType": "image/jpg",
+      "description": "This NFT is minted by Bach using Mesh (https://meshjs.dev/)."
+    };
+    const asset1: Mint = {
+      assetName: 'T1',
+      assetQuantity: '1',
+      metadata: assetMetadata1,
+      label: '721',
+      recipient: 'addr_test1qz40t3pvn5x7xxah7zvkn0ay30twems9g8l09tg5dnj70vwdht80uqnhfvvm6sjjlg3kmalrh9g7evzs7pwz8kyqh2dstcr9lu',
+    };
+    tx.mintAsset(
+      forgingScript,
+      asset1,
+    );
+
+    const unsignedTx = await tx.build();
+    const signedTx = await wallet.signTx(unsignedTx);
+    const txHash = await wallet.submitTx(signedTx);
+
 }
+async function BuntNFT() {
+  const usedAddress = await wallet.getUsedAddresses();
+  const address = usedAddress[0];
+  const forgingScript = ForgeScript.withOneSignature(address);
+  console.log (forgingScript)
+  
+  const tx = new Transaction({ initiator: wallet });
+
+  const asset2: Asset = {
+    unit: 'd3332d3250f2b5658d52ea798d59ed1b3e836a6fe6ce3ee8ab6224c75431',
+    quantity: '1',
+  };
+  tx.burnAsset(forgingScript, asset2);
+
+  const unsignedTx = await tx.build();
+  const signedTx = await wallet.signTx(unsignedTx);
+  const txHash = await wallet.submitTx(signedTx);
+}
+
+  return (
+    <div>
+      <h1>Connect Wallet</h1>
+      <CardanoWallet />
+      {connected && (
+        <>
+          <h1>Get Wallet Assets</h1>
+          {assets ? (
+            <pre>
+              <code className="language-js">
+                {JSON.stringify(assets, null, 2)}
+              </code>
+            </pre>
+          ) : (
+            <button
+              type="button"
+              onClick={() => getAssets()}
+              disabled={loading}
+              style={{
+                margin: "8px",
+                backgroundColor: loading ? "orange" : "grey",
+              }}
+            >
+              Get Wallet Assets
+            </button>
+          )}
+        </>
+      )}
+
+      <br/>
+      <button
+        type="button"
+        onClick={() => sendAda()}
+        disabled={loading}
+        style={{
+          margin: "8px",
+          backgroundColor: loading ? "orange" : "grey",
+        }}
+      >
+        Send Ada
+      </button>
+      <br/>
+      <button
+        type="button"
+        onClick={() => mintNFT()}
+        disabled={loading}
+        style={{
+          margin: "8px",
+          backgroundColor: loading ? "orange" : "grey",
+        }}
+      >
+        Mint NFT
+      </button>
+
+      <br/>
+      <button
+        type="button"
+        onClick={() => BuntNFT()}
+        disabled={loading}
+        style={{
+          margin: "8px",
+          backgroundColor: loading ? "orange" : "grey",
+        }}
+      >
+        Burn NFT
+      </button>
+
+
+      <br/>
+      <button
+        type="button"
+        onClick={() => sendAsset()}
+        disabled={loading}
+        style={{
+          margin: "8px",
+          backgroundColor: loading ? "orange" : "grey",
+        }}
+      >
+        Send Asset
+      </button>
+
+    </div>
+  );
+};
+
+export default Home;
